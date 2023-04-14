@@ -1,0 +1,31 @@
+const express =require('express');
+const cors = require('cors');
+const bodyParser=require('body-parser');
+const app = express();
+const dataBase=require("./Database");
+const userRoutes = require('./Routes/userRoute');
+const hallRoutes=require("./Routes/hallRoute")
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended:false})); 
+db=new dataBase();
+//creat post api to be able to booking hall.
+
+app.post('/hall',(request,response)=>{
+const body=request.body;
+console.log(body);
+response.send('thank for using api');
+});
+
+app.get('/hall',(req,res)=>{
+res.send();
+});
+app.use(userRoutes)
+app.use(hallRoutes)
+
+const port =3000;
+app.listen(port,()=>{
+    console.log(`server has started in port ${port}`);
+   db.connect();
+})
