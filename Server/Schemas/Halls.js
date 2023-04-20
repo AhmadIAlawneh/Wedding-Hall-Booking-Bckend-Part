@@ -1,3 +1,4 @@
+const { object, array } = require('joi');
 const mongoose =require('mongoose');
 const hallSchema= mongoose.Schema({
   
@@ -37,41 +38,29 @@ required:true,
    
 
 },
-booking:{
-    type:Object,
-    user:[{
-        
-        "$ref": "User"
-    }],
-    bookDate:{
-        type:Date,
-        require:true
+booking: [{
+  user: {
+    type: Object,
+    ref: 'User'
+  },
+  bookDate: {
+    type: Date,
+  },
+  bookStartTime: {
+    type: Date,
+  },
+  bookEndTime: {
+    type: Date,
+  },
+  payment: {
+    paymentDate: {
+      type: Date,
     },
-    bookStartTime:{
-type:Date,
-require:true
-
+    paymentAmount: {
+      type: Number,
     },
-    bookEndTime:{
-        type:Date,
-        require:true
-        
-            },
-    payment:{
-        type:Object,
-        paymentDate:{
-type:Date,
-required:true,
-
-        },
-        paymentAmount:{
-type:Number,
-required:true,
-        },
-
-    }
-
-},
+  },
+}],
 
     
     
@@ -83,4 +72,5 @@ required:true,
 }
 
 );
-module.exports = mongoose.model('Halls', hallSchema)
+let Halls= mongoose.model('Halls', hallSchema);
+module.exports =Halls;

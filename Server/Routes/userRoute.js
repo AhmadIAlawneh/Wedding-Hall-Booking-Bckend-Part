@@ -20,14 +20,12 @@ router.post('/signup', async (req, res) => {
 
       });
      */
-      let user = await User.findOne({ email });
-      if (user) {
-        return res.status(400).json({ msg: 'User already exists' });
-      }
+   
       user = new User({
         idNumber,userName,role,email,name,phone,password,address
 
       });
+      
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
       // Save the user to the database
@@ -37,7 +35,7 @@ router.post('/signup', async (req, res) => {
       res.status(201).send({ message: 'User created successfully.' });
     } catch (error) {
       // Return an error message
-      res.status(400).send({ error: error.message });
+      res.status(400).send({ error: error.message+error });
     }
   });
 
@@ -86,3 +84,10 @@ router.post('/signup', async (req, res) => {
   
   // Export the router
   module.exports = router;
+
+
+  ///// id 1 = 6439c61b581c367502c79c5a
+  
+  ///id2 = "6439c734581c367502c79c64
+
+  ///owner = 6439c61b581c367502c79c5a;

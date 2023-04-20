@@ -5,7 +5,7 @@ const app = express();
 const dataBase=require("./Database");
 const userRoutes = require('./Routes/userRoute');
 const hallRoutes=require("./Routes/hallRoute")
-
+const ContactRoutes=require("./Routes/Contact")
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:false})); 
@@ -23,7 +23,7 @@ res.send();
 });
 app.use(userRoutes)
 app.use(hallRoutes)
-
+app.use(ContactRoutes)
 const port =3000;
 app.listen(port,()=>{
     console.log(`server has started in port ${port}`);
