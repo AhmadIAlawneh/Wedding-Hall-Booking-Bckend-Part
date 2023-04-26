@@ -51,7 +51,11 @@ router.post('/halls/:hallId/bookings', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 // Get all halls with booking and payments
+
+
 router.get('/api/halls', async (req, res) => {
   try {
     const halls = await Halls.find().populate({
@@ -64,10 +68,14 @@ router.get('/api/halls', async (req, res) => {
     res.status(500).send('Error occurred while getting halls.');
   }
 });
+
 // PUT /halls/:userId/:bookDate
-router.put('/halls/:userId/:bookDate', async (req, res) => {
+
+
+router.put('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
   const userId = req.params.userId;
   const bookDate = new Date(req.params.bookDate);
+  const bookStartTime = new Date(req.params.bookStartTime);
 
   try {
     // Find the hall that has the booking
@@ -78,9 +86,18 @@ router.put('/halls/:userId/:bookDate', async (req, res) => {
       return res.status(404).send('Booking not found');
     }
 
+    // Find the booking in the hall's booking array
+    const booking = hall.booking.find(b => b.user === userId && b.bookDate.getTime() === bookDate.getTime() && b.bookStartTime.getTime() === bookStartTime.getTime());
+
+    if (!booking) {
+      // Handle case when booking is not found
+      return res.status(404).send('Booking not found');
+    }
+
     // Modify the booking
-    hall.booking.bookStartTime = new Date(req.body.bookStartTime);
-    hall.booking.bookEndTime = new Date(req.body.bookEndTime);
+    booking.bookDate = new Date(req.body.bookDate);
+    booking.bookStartTime = new Date(req.body.bookStartTime);
+    booking.bookEndTime = new Date(req.body.bookEndTime);
 
     // Save the updated hall document
     await hall.save();
@@ -93,14 +110,18 @@ router.put('/halls/:userId/:bookDate', async (req, res) => {
     return res.status(500).send('Internal Server Error');
   }
 });
-// DELETE /halls/:userId/:bookDate
-router.delete('/halls/:userId/:bookDate', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const bookDate = new Date(req.params.bookDate);
 
+//delete booking 
+
+
+router.delete('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
+  const userId = req.params.userId;
+  const bookDate = new Date(req.params.bookDate);
+  const bookStartTime = new Date(req.params.bookStartTime);
+
+  try {
     // Find the hall that has the booking
-    const hall = await Halls.findOne({ 'booking.user': userId, 'booking.bookDate': bookDate });
+    const hall = await Halls.findOne({ 'booking.user': userId, 'booking.bookDate': bookDate, 'booking.bookStartTime': bookStartTime });
 
     if (!hall) {
       // Handle case when hall is not found
@@ -108,8 +129,8 @@ router.delete('/halls/:userId/:bookDate', async (req, res) => {
     }
 
     // Remove the booking from the hall document
-    hall.booking = null;
-
+    hall.booking.pull({ user: userId, bookDate, bookStartTime });
+    
     // Save the updated hall document
     await hall.save();
 
@@ -122,54 +143,4 @@ router.delete('/halls/:userId/:bookDate', async (req, res) => {
   }
 });
 
-
-
   module.exports = router;
-  ///6439e50f2c77f75efe499c68
-  /*
-  {
-    "name": "Hall 1",
-    "location": "Location 1",
-    "type": 100,
-    "designs":{
-"price": 500,
-"description":"blblblb"
-    },
-    
-    "booking": null
-}
-*/
-/*
-[
-  {
-      "booking": {
-          "payment": {
-              "paymentAmount": 100,
-              "paymentDate": "2023-04-19T21:34:28.768Z"
-          },
-          "bookDate": "2023-04-20T00:00:00.000Z",
-          "bookEndTime": "2023-04-20T12:00:00.000Z",
-          "bookStartTime": "2023-04-20T10:00:00.000Z",
-          "user": "643712da2a092f505aed5929"
-      },
-      "_id": "643f173191861de1b815da90",
-      "name": "Hall -b ",
-      "location": "tulkarm",
-      "user": "6439c61b581c367502c79c5a",
-      "type": "party",
-      "designs": {
-          "price": 5000,
-          "description": "hall 2"
-      }
-  },
-  {
-      "_id": "643f176891861de1b815da91",
-      "name": "Hall -c ",
-      "location": "tulkarm",
-      "type": "party",
-      "designs": {
-          "price": 5000,
-          "description": "hall 2"
-      }
-  }
-]*/

@@ -39,6 +39,7 @@ router.post('/signup', async (req, res) => {
     }
   });
 
+//get all user 
 
   router.get('/signup', async (req, res) => {
     try {
@@ -82,12 +83,41 @@ router.post('/signup', async (req, res) => {
     }
   });
   
+  //modify user profile 
+  router.put('/users/:userId', async (req, res) => {
+    const userId = req.params.userId;
+  
+    try {
+      // Find the user by ID
+      const user = await User.findById(userId);
+  
+      if (!user) {
+        // Handle case when user is not found
+        return res.status(404).send('User not found');
+      }
+  
+      // Modify the user
+      const users=new User({
+        idNumber:req.body.idNumber,
+        userName : req.body.userName || user.userName,
+       email : req.body.email || user.email,
+        name : req.body.name || user.name,
+       phone : req.body.phone || user.phone,
+        address : req.body.address || user.address,
+        password :req.body.password || user.password,
+      })
+
+  
+      // Save the updated user document
+      await users.save();
+      console.log('user:', user);
+      // Send response to client
+      return res.send('User modified successfully');
+    } catch (err) {
+      // Handle error
+      console.error(err);
+      return res.status(500).send('Internal Server Error');
+    }
+  });
   // Export the router
   module.exports = router;
-
-
-  ///// id 1 = 6439c61b581c367502c79c5a
-  
-  ///id2 = "6439c734581c367502c79c64
-
-  ///owner = 6439c61b581c367502c79c5a;
