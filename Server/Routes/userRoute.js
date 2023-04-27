@@ -7,19 +7,7 @@ router.post('/signup', async (req, res) => {
     try {
       // Create a new user object
       const {idNumber,userName,role,email,name,phone,password,address}=req.body
-     /* const user = new User({
-        idNumber: req.body.idNumber,
-        userName: req.body.userName,
-        role: req.body.role,
-        email: req.body.email,
-        name: req.body.name,
-        phone: req.body.phone,
-        password: req.body.password,
-        address:req.body.address
-     
-
-      });
-     */
+ 
    
       user = new User({
         idNumber,userName,role,email,name,phone,password,address
@@ -97,27 +85,27 @@ router.post('/signup', async (req, res) => {
       }
   
       // Modify the user
-      const users=new User({
-        idNumber:req.body.idNumber,
-        userName : req.body.userName || user.userName,
-       email : req.body.email || user.email,
-        name : req.body.name || user.name,
-       phone : req.body.phone || user.phone,
-        address : req.body.address || user.address,
-        password :req.body.password || user.password,
-      })
-
+      user.userName = req.body.userName || user.userName;
+      user.email = req.body.email || user.email;
+      user.name = req.body.name || user.name;
+      user.phone = req.body.phone || user.phone;
+      user.address = req.body.address || user.address;
   
       // Save the updated user document
-      await users.save();
-      console.log('user:', user);
+      await user.save();
+  
       // Send response to client
-      return res.send('User modified successfully');
+      return res.send('User profile modified successfully');
     } catch (err) {
       // Handle error
+      if (err.code === 11000) {
+        // Duplicate key error
+        return res.status(400).send('Duplicate username, email, or phone');
+      }
       console.error(err);
       return res.status(500).send('Internal Server Error');
     }
   });
+  
   // Export the router
   module.exports = router;
