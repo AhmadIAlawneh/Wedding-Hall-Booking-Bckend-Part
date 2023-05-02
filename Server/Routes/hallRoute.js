@@ -191,4 +191,68 @@ router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) =
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
+  try {
+    const hallId = req.params.hallId;
+    const designId = req.params.designId;
+
+    const { name, price, description } = await addDesignSchema.validateAsync(req.body);
+
+    const design = await Halls.findOneAndUpdate(
+      { _id: hallId, 'designs._id': designId },
+      { 
+        $set: { 
+          'designs.$.name': name,
+          'designs.$.price': price,
+          'designs.$.description': description,
+        }
+      },
+      { new: true }
+    );
+
+    if (!design) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    res.status(200).json(design);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/hallsdel/:hallId/designs/:designId', async (req, res) => {
+  try {
+    const hallId = req.params.hallId;
+    const designId = req.params.designId;
+
+    const design = await Halls.findOneAndUpdate(
+      { _id: hallId },
+      { $pull: { designs: { _id: designId } } },
+      { new: true }
+    );
+
+    if (!design) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    res.status(200).json(design);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+//get all halls  
+
+router.get('/halls', async (req, res) => {
+  try {
+    const halls = await Halls.find({});
+    res.status(200).json(halls);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
   module.exports = router;
