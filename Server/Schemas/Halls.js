@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 const { object, array } = require('joi');
 const mongoose =require('mongoose');
 const hallSchema= mongoose.Schema({
@@ -44,48 +44,9 @@ type:Date,
         },
       },
     ],
-booking: [{
-=======
-const { object, array } = require("joi");
-const mongoose = require("mongoose");
-const hallSchema = mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  type: {
-    type: String,
-    required: true,
-  },
-  location: {
-    type: String,
-    required: true,
-  },
->>>>>>> 8bba5210d4e40f8853352cb198d889d5641f221e
-  user: {
-    type: Object,
-    ref: "User",
-  },
-  availableTimes: {
-    type: Date,
-  },
 
-  designs: [
-    {
-      name: {
-        type: String,
-        required: true,
-      },
-      price: {
-        type: Number,
-        required: true,
-      },
-      description: {
-        type: String,
-        required: true,
-      },
-    },
-  ],
+
+  
   booking: [
     {
       user: {

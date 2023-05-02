@@ -5,7 +5,7 @@ const router = express.Router();
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const { object,string, number } = require('joi');
-
+// add hall 
 router.post('/halls', async (req, res) => {
   const hall = req.body;
   try{
