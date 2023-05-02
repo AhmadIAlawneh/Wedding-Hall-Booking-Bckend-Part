@@ -11,7 +11,7 @@ const hallRoutes = require('./Routes/hallRoute');
 
 class Database{
     constructor(){
-this.url="mongodb://localhost:27017/halBooking"
+this.url="mongodb://127.0.0.1:27017/halBooking"
     }
     connect(){
         mongoose.connect(this.url)

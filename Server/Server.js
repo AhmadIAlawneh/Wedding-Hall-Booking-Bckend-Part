@@ -12,15 +12,15 @@ app.use(bodyParser.urlencoded({extended:false}));
 db=new dataBase();
 //creat post api to be able to booking hall.
 
-app.post('/hall',(request,response)=>{
-const body=request.body;
-console.log(body);
-response.send('thank for using api');
-});
+// app.post('/hall',(request,response)=>{
+// const body=request.body;
+// console.log(body);
+// response.send('thank for using api');
+// });
 
-app.get('/hall',(req,res)=>{
-res.send();
-});
+// app.get('/hall',(req,res)=>{
+// res.send();
+// });
 app.use(userRoutes)
 app.use(hallRoutes)
 app.use(ContactRoutes)

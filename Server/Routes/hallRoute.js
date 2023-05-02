@@ -23,6 +23,23 @@ router.post('/halls', async (req, res) => {
   
 })
 
+router.post('/halls', async (req, res) => {
+  const hall = req.body;
+  try{
+    await Halls.create(hall);
+    res.status(200).json({
+      message: "Success"
+    })
+  }catch(e) {
+    res.status(500).json({
+      message: "something went wrong",
+      error: e
+    })
+
+  }
+  
+})
+
 // Booking
 router.post('/halls/:hallId/bookings', async (req, res) => {
   try {
@@ -82,8 +99,8 @@ router.get('/api/halls', async (req, res) => {
     const halls = await Halls.find().populate({
       path: 'booking.user',
       model: 'User'
-    });
-    res.send(halls);
+    }).exec();
+    res.status(200).json({halls});
   } catch (ex) {
     console.log(ex.message);
     res.status(500).send('Error occurred while getting halls.');
