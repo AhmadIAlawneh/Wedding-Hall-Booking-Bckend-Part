@@ -8,7 +8,7 @@ required:true,
 },
 type:{
 type:String,
-required:true,
+
 },
 location:{
     type:String,
@@ -23,21 +23,26 @@ type:Date,
 
     },
 
-    designs:{
-    type:Object,
-    required:true,
-    price:{
-        type:Number,
-required:true,
-    },
-    description:{
-        type:String,
-        required:true,
-    },
-   
-   
-
-},
+    designs: [
+      {
+        name:{
+          type: String,
+          required: true,
+        },
+        imageUrl: {
+          type: String,
+          required: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+        description: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
 booking: [{
   user: {
     type: Object,

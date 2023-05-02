@@ -1,6 +1,27 @@
 const express = require('express');
 const Halls = require('../Schemas/Halls');
+
 const router = express.Router();
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+const { object,string, number } = require('joi');
+
+router.post('/halls', async (req, res) => {
+  const hall = req.body;
+  try{
+    await Halls.create(hall);
+    res.status(200).json({
+      message: "Success"
+    })
+  }catch(e) {
+    res.status(500).json({
+      message: "something went wrong",
+      error: e
+    })
+
+  }
+  
+})
 
 // Booking
 router.post('/halls/:hallId/bookings', async (req, res) => {
@@ -143,4 +164,31 @@ router.delete('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
   }
 });
 
+// add design
+const Joi = require('joi'); 
+const addDesignSchema = Joi.object({
+  name: Joi.string().required(),
+  price: Joi.number().required(),
+  description: Joi.string().required(),
+});
+
+
+router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) => {
+  try {
+    const hallId = req.params.hallId;
+
+    const { name, price, description } = await addDesignSchema.validateAsync(req.body);
+
+    const imageUrl = req.file.path; // assuming multer saves the image to the "uploads" directory
+
+    const design = { name, price, description, imageUrl };
+
+    const updatedHall = await Halls.findByIdAndUpdate(hallId, { $push: { designs: design } }, { new: true });
+
+    res.status(200).json(updatedHall);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
   module.exports = router;
