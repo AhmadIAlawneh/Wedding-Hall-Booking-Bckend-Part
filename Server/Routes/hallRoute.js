@@ -190,6 +190,8 @@ const addDesignSchema = Joi.object({
 });
 
 
+
+
 router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) => {
   try {
     const hallId = req.params.hallId;
@@ -202,13 +204,15 @@ router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) =
 
     const updatedHall = await Halls.findByIdAndUpdate(hallId, { $push: { designs: design } }, { new: true });
 
-    res.status(200).json(updatedHall);
+    res.status(200).json({ 
+      hall: updatedHall,
+      imageUrl: imageUrl  // Include the image URL in the response
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
   try {
     const hallId = req.params.hallId;
@@ -272,4 +276,26 @@ router.get('/halls', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+//get design 
+router.get('/halls/:hallId/designs', async (req, res) => {
+  try {
+    const hallId = req.params.hallId;
+
+    // Assuming you have a model called 'Hall' representing your halls collection
+    const hall = await Halls.findById(hallId);
+
+    if (!hall) {
+      return res.status(404).json({ error: 'Hall not found' });
+    }
+
+    const designs = hall.designs;
+
+    res.status(200).json({ designs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
   module.exports = router;
