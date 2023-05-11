@@ -70,6 +70,29 @@ router.post('/signup', async (req, res) => {
       res.status(500).send('Server Error');
     }
   });
+
+
+  //get specific user
+
+  router.get('/users/:id', async (req, res) => {
+    try {
+      const userId = req.params.id;
+      
+      // Find the user by ID in the database
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        // If user is not found, return an error message
+        return res.status(404).send({ error: 'User not found.' });
+      }
+      
+      // Return the user object
+      res.send(user);
+    } catch (error) {
+      // Return an error message
+      res.status(500).send({ error: error.message });
+    }
+  });
   
   //modify user profile 
   router.put('/users/:userId', async (req, res) => {
