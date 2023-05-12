@@ -3,14 +3,15 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../Schemas/User');
+const Role = require('../Schemas/Roles');
 router.post('/signup', async (req, res) => {
     try {
       // Create a new user object
       const {idNumber,userName,role,email,name,phone,password,address}=req.body
- 
-   
+      const userRole = await Role.findOne({roleName: "user"}).exec();
+      console.log({userRole})
       user = new User({
-        idNumber,userName,role,email,name,phone,password,address
+        idNumber,userName,role: userRole._id,email,name,phone,password,address
 
       });
       
@@ -23,7 +24,7 @@ router.post('/signup', async (req, res) => {
       res.status(201).send({ message: 'User created successfully.' });
     } catch (error) {
       // Return an error message
-      res.status(400).send({ error: error.message+error });
+      res.status(400).send({ error: error, message: error.message });
     }
   });
 
@@ -44,7 +45,7 @@ router.post('/signup', async (req, res) => {
       const { email, password } = req.body;
   
       // Check if user exists
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).populate("role").exec();
       if (!user) {
         return res.status(400).json({ msg: 'Invalid email' });
       }
@@ -63,8 +64,7 @@ router.post('/signup', async (req, res) => {
         }
       };
       const token = jwt.sign(payload, 'secret', { expiresIn: '1h' });
-  
-      res.json({ token });
+      res.status(200).json({ token, user });
     } catch (err) {
       console.error(err.message);
       res.status(500).send('Server Error');
@@ -129,6 +129,18 @@ router.post('/signup', async (req, res) => {
       return res.status(500).send('Internal Server Error');
     }
   });
+
+  router.get('/api/updateusers', async(req, res) => {
+    const users = await User.find({userName: {$nin: ["admin"]}});
+    const userRole = await Role.findOne({roleName: "user"}).exec();
+
+    const promises = users.map(user => {
+      user.role = userRole._id;
+      return user.save();
+    });
+    await Promise.all(promises);
+    res.send("success")
+  })
   
   // Export the router
   module.exports = router;

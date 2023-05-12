@@ -45,9 +45,47 @@ type:Date,
         },
       },
     ],
+// booking: [{
+// =======
+// const { object, array } = require("joi");
+// const mongoose = require("mongoose");
+// const hallSchema = mongoose.Schema({
+//   name: {
+//     type: String,
+//     required: true,
+//   },
+//   type: {
+//     type: String,
+//     required: true,
+//   },
+//   location: {
+//     type: String,
+//     required: true,
+//   },
+//   user: {
+//     type: Object,
+//     ref: "User",
+//   },
+//   availableTimes: {
+//     type: Date,
+//   },
 
-
-  
+  // designs: [
+  //   {
+  //     name: {
+  //       type: String,
+  //       required: true,
+  //     },
+  //     price: {
+  //       type: Number,
+  //       required: true,
+  //     },
+  //     description: {
+  //       type: String,
+  //       required: true,
+  //     },
+  //   },
+  // ],
   booking: [
     {
       user: {
@@ -75,4 +113,5 @@ type:Date,
   ],
 });
 let Halls = mongoose.model("Halls", hallSchema);
+
 module.exports = Halls;

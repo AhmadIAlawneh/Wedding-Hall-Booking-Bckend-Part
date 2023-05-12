@@ -201,7 +201,7 @@ router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) =
     const imageUrl = req.file.path; // assuming multer saves the image to the "uploads" directory
 
     const design = { name, price, description, imageUrl };
-
+    console.log({hallId})
     const updatedHall = await Halls.findByIdAndUpdate(hallId, { $push: { designs: design } }, { new: true });
 
     res.status(200).json({ 
