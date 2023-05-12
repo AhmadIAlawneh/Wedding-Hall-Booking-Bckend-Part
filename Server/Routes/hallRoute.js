@@ -23,22 +23,6 @@ router.post('/halls', async (req, res) => {
   
 })
 
-router.post('/halls', async (req, res) => {
-  const hall = req.body;
-  try{
-    await Halls.create(hall);
-    res.status(200).json({
-      message: "Success"
-    })
-  }catch(e) {
-    res.status(500).json({
-      message: "something went wrong",
-      error: e
-    })
-
-  }
-  
-})
 
 // Booking
 router.post('/halls/:hallId/bookings', async (req, res) => {
@@ -107,7 +91,7 @@ router.get('/api/halls', async (req, res) => {
   }
 });
 
-// PUT /halls/:userId/:bookDate
+//modify hall booking// PUT /halls/:userId/:bookDate
 
 
 router.put('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
@@ -149,6 +133,7 @@ router.put('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
   }
 });
 
+
 //delete booking 
 
 
@@ -181,17 +166,18 @@ router.delete('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
   }
 });
 
+
+
 // add design
+
+
+
 const Joi = require('joi'); 
 const addDesignSchema = Joi.object({
   name: Joi.string().required(),
   price: Joi.number().required(),
   description: Joi.string().required(),
 });
-
-
-
-
 router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) => {
   try {
     const hallId = req.params.hallId;
@@ -213,6 +199,10 @@ router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) =
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+//modify design
+
+
 router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
   try {
     const hallId = req.params.hallId;
@@ -242,6 +232,9 @@ router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+// delete design
 
 router.delete('/hallsdel/:hallId/designs/:designId', async (req, res) => {
   try {
