@@ -2,7 +2,10 @@ const express = require('express');
 const Halls = require('../Schemas/Halls');
 const router = express.Router();
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const upload = multer({ dest: 'uploads/' });
+const { promisify } = require('util');
 const { object,string, number } = require('joi');
 
 // add hall 
@@ -219,32 +222,55 @@ router.put('/halls/:hallId/bookings/:bookingId', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-// add design
+const Joi = require('joi');
 
 
 
-const Joi = require('joi'); 
 const addDesignSchema = Joi.object({
   name: Joi.string().required(),
   price: Joi.number().required(),
   description: Joi.string().required(),
 });
 
+// Configure Multer for file upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads'); // Set the destination folder for uploaded files
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + '-' + uniqueSuffix); // Set the file name for uploaded files
+  },
+});
+
 router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) => {
   try {
     const hallId = req.params.hallId;
+    const { name, price, description } = req.body;
+    const imageFile = req.file;
 
-    const { name, price, description } = await addDesignSchema.validateAsync(req.body);
+    // Read the image file as a Buffer
+    const imageBuffer = await promisify(fs.readFile)(imageFile.path);
 
-    const imageUrl = req.file.path; // assuming multer saves the image to the "uploads" directory
+    const design = {
+      name,
+      price,
+      description,
+      imageUrl: `data:${imageFile.mimetype};base64,${imageBuffer.toString('base64')}`,
+    };
 
-    const design = { name, price, description, imageUrl };
-    console.log({hallId})
-    const updatedHall = await Halls.findByIdAndUpdate(hallId, { $push: { designs: design } }, { new: true });
+    const updatedHall = await Halls.findByIdAndUpdate(
+      hallId,
+      { $push: { designs: design } },
+      { new: true }
+    );
 
-    res.status(200).json({ 
+    // Remove the temporary image file
+    await promisify(fs.unlink)(imageFile.path);
+
+    res.status(201).json({
+      message: 'Design added successfully',
       hall: updatedHall,
-      imageUrl: imageUrl  // Include the image URL in the response
     });
   } catch (err) {
     console.error(err);
@@ -255,24 +281,34 @@ router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) =
 //modify design
 
 
-router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
+
+
+router.patch('/halls/:hallId/designs/:designId', upload.single('image'), async (req, res) => {
   try {
     const hallId = req.params.hallId;
     const designId = req.params.designId;
 
-    const { name, price, description } = await addDesignSchema.validateAsync(req.body);
+    const { name, price, description } = req.body;
+    const imageFile = req.file;
+
+    // Read the image file as a Buffer
+    const imageBuffer = await promisify(fs.readFile)(imageFile.path);
+
+    const designUpdates = {
+      'designs.$.name': name,
+      'designs.$.price': price,
+      'designs.$.description': description,
+      'designs.$.imageUrl': `data:${imageFile.mimetype};base64,${imageBuffer.toString('base64')}`,
+    };
 
     const design = await Halls.findOneAndUpdate(
       { _id: hallId, 'designs._id': designId },
-      { 
-        $set: { 
-          'designs.$.name': name,
-          'designs.$.price': price,
-          'designs.$.description': description,
-        }
-      },
+      { $set: designUpdates },
       { new: true }
     );
+
+    // Remove the temporary image file
+    await promisify(fs.unlink)(imageFile.path);
 
     if (!design) {
       return res.status(404).json({ error: 'Design not found' });
@@ -284,7 +320,6 @@ router.patch('/halls/:hallId/designs/:designId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 
 // delete design
 
