@@ -1,10 +1,10 @@
 const express = require('express');
 const Halls = require('../Schemas/Halls');
-
 const router = express.Router();
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const { object,string, number } = require('joi');
+
 // add hall 
 router.post('/halls', async (req, res) => {
   const hall = req.body;
@@ -22,12 +22,61 @@ router.post('/halls', async (req, res) => {
   }
   
 })
+//get a hall
 
+router.get('/halls/:id', async (req, res) => {
+  try {
+    const hallId = req.params.id;
+
+    // Find the hall by ID
+    const hall = await Halls.findById(hallId);
+    if (!hall) {
+      return res.status(404).json({ error: 'Hall not found' });
+    }
+
+    res.status(200).json({ hall });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/halls', async (req, res) => {
+  try {
+    // Find all halls
+    const halls = await Halls.find();
+
+    res.status(200).json({ halls });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// delete a  hall 
+
+router.delete('/halls/:id', async (req, res) => {
+  try {
+    const hallId = req.params.id;
+
+    // Find the hall by ID and delete it
+    const deletedHall = await Halls.findByIdAndDelete(hallId);
+    if (!deletedHall) {
+      return res.status(404).json({ error: 'Hall not found' });
+    }
+
+    res.status(200).json({ message: 'Hall deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Booking
-router.post('/halls/:hallId/bookings', async (req, res) => {
+//make booking
+router.post('/halls/:hallId/bookings/:designId', async (req, res) => {
   try {
-    const { hallId } = req.params;
+    const { hallId, designId } = req.params;
     const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } = req.body;
 
     const hall = await Halls.findById(hallId);
@@ -36,25 +85,31 @@ router.post('/halls/:hallId/bookings', async (req, res) => {
     }
 
     // Check if the hall is available for the given date and time
-    const bookings = hall.booking;
-    const currentDate = new Date();
-    const bookedDates = bookings.filter((booking) => {
+    const overlappingBooking = hall.booking.find((booking) => {
       const start = new Date(booking.bookStartTime);
       const end = new Date(booking.bookEndTime);
-      return start <= currentDate && end >= currentDate;
+      const requestedStart = new Date(bookStartTime);
+      const requestedEnd = new Date(bookEndTime);
+
+      return (
+        (requestedStart >= start && requestedStart < end) ||
+        (requestedEnd > start && requestedEnd <= end) ||
+        (requestedStart <= start && requestedEnd >= end)
+      );
     });
 
-    for (let i = 0; i < bookedDates.length; i++) {
-      const booking = bookedDates[i];
-      const start = new Date(booking.bookStartTime);
-      const end = new Date(booking.bookEndTime);
-      if (start <= new Date(bookStartTime) && end >= new Date(bookEndTime)) {
-        return res.status(400).json({ message: 'Hall is not available for the given date and time' });
-      }
+    if (overlappingBooking) {
+      return res.status(400).json({ message: 'Hall is not available for the given date and time' });
     }
 
-    // Book the hall
-    hall.booking.push({
+    // Find the selected design by ID
+    const selectedDesign = hall.designs.find((design) => design._id.toString() === designId);
+    if (!selectedDesign) {
+      return res.status(404).json({ message: 'Design not found' });
+    }
+
+    // Book the hall with the selected design
+    const newBooking = {
       user: userId,
       bookDate: bookDate,
       bookStartTime: bookStartTime,
@@ -62,12 +117,43 @@ router.post('/halls/:hallId/bookings', async (req, res) => {
       payment: {
         paymentDate: new Date(),
         paymentAmount: paymentAmount
+      },
+      design: {
+        _id: selectedDesign._id,
+        name: selectedDesign.name,
+        imageUrl: selectedDesign.imageUrl,
+        price: selectedDesign.price,
+        description: selectedDesign.description
       }
-    });
+    };
 
+    hall.booking.push(newBooking);
     await hall.save();
 
-    res.json(hall);
+    res.json(newBooking);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+// delete all booking for an hall 
+
+router.delete('/halls/:hallId/bookings', async (req, res) => {
+  try {
+    const { hallId } = req.params;
+    
+    // Find the hall by ID
+    const hall = await Halls.findById(hallId);
+    if (!hall) {
+      return res.status(404).json({ message: 'Hall not found' });
+    }
+    
+    // Delete all bookings for the hall
+    hall.booking = [];
+    
+    await hall.save();
+    
+    res.json({ message: 'All bookings for the hall have been deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -75,99 +161,64 @@ router.post('/halls/:hallId/bookings', async (req, res) => {
 });
 
 
-// Get all halls with booking and payments
-
-
-router.get('/api/halls', async (req, res) => {
+router.put('/halls/:hallId/bookings/:bookingId', async (req, res) => {
   try {
-    const halls = await Halls.find().populate({
-      path: 'booking.user',
-      model: 'User'
-    }).exec();
-    res.status(200).json({halls});
-  } catch (ex) {
-    console.log(ex.message);
-    res.status(500).send('Error occurred while getting halls.');
-  }
-});
+    const { hallId, bookingId } = req.params;
+    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } = req.body;
 
-//modify hall booking// PUT /halls/:userId/:bookDate
-
-
-router.put('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
-  const userId = req.params.userId;
-  const bookDate = new Date(req.params.bookDate);
-  const bookStartTime = new Date(req.params.bookStartTime);
-
-  try {
-    // Find the hall that has the booking
-    const hall = await Halls.findOne({ 'booking.user': userId, 'booking.bookDate': bookDate });
-
+    const hall = await Halls.findById(hallId);
     if (!hall) {
-      // Handle case when hall is not found
-      return res.status(404).send('Booking not found');
+      return res.status(404).json({ message: 'Hall not found' });
     }
 
-    // Find the booking in the hall's booking array
-    const booking = hall.booking.find(b => b.user === userId && b.bookDate.getTime() === bookDate.getTime() && b.bookStartTime.getTime() === bookStartTime.getTime());
-
-    if (!booking) {
-      // Handle case when booking is not found
-      return res.status(404).send('Booking not found');
+    // Find the booking to be modified
+    const bookingIndex = hall.booking.findIndex((booking) => booking._id.toString() === bookingId);
+    if (bookingIndex === -1) {
+      return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Modify the booking
-    booking.bookDate = new Date(req.body.bookDate);
-    booking.bookStartTime = new Date(req.body.bookStartTime);
-    booking.bookEndTime = new Date(req.body.bookEndTime);
+    // Verify that the requesting user is the one who made the booking
+    const booking = hall.booking[bookingIndex];
+    if (booking.user.toString() !== userId) {
+      return res.status(403).json({ message: 'You are not authorized to modify this booking' });
+    }
 
-    // Save the updated hall document
+    // Check if the hall is available for the modified booking date and time
+    const overlappingBooking = hall.booking.find((booking, index) => {
+      if (index === bookingIndex) {
+        return false; // Skip the booking being modified
+      }
+
+      const start = new Date(booking.bookStartTime);
+      const end = new Date(booking.bookEndTime);
+      const requestedStart = new Date(bookStartTime);
+      const requestedEnd = new Date(bookEndTime);
+
+      return (
+        (requestedStart >= start && requestedStart < end) ||
+        (requestedEnd > start && requestedEnd <= end) ||
+        (requestedStart <= start && requestedEnd >= end)
+      );
+    });
+
+    if (overlappingBooking) {
+      return res.status(400).json({ message: 'Hall is not available for the modified booking date and time' });
+    }
+
+    // Update the booking with the modified information
+    booking.bookDate = bookDate;
+    booking.bookStartTime = bookStartTime;
+    booking.bookEndTime = bookEndTime;
+    booking.payment.paymentAmount = paymentAmount;
+
     await hall.save();
 
-    // Send response to client
-    return res.send('Booking modified successfully');
+    res.json(booking);
   } catch (err) {
-    // Handle error
     console.error(err);
-    return res.status(500).send('Internal Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
-
-
-//delete booking 
-
-
-router.delete('/halls/:userId/:bookDate/:bookStartTime', async (req, res) => {
-  const userId = req.params.userId;
-  const bookDate = new Date(req.params.bookDate);
-  const bookStartTime = new Date(req.params.bookStartTime);
-
-  try {
-    // Find the hall that has the booking
-    const hall = await Halls.findOne({ 'booking.user': userId, 'booking.bookDate': bookDate, 'booking.bookStartTime': bookStartTime });
-
-    if (!hall) {
-      // Handle case when hall is not found
-      return res.status(404).send('Booking not found');
-    }
-
-    // Remove the booking from the hall document
-    hall.booking.pull({ user: userId, bookDate, bookStartTime });
-    
-    // Save the updated hall document
-    await hall.save();
-
-    // Send response to client
-    return res.send('Booking deleted successfully');
-  } catch (err) {
-    // Handle error
-    console.error(err);
-    return res.status(500).send('Internal Server Error');
-  }
-});
-
-
-
 // add design
 
 
@@ -178,6 +229,7 @@ const addDesignSchema = Joi.object({
   price: Joi.number().required(),
   description: Joi.string().required(),
 });
+
 router.post('/halls/:hallId/designs', upload.single('image'), async (req, res) => {
   try {
     const hallId = req.params.hallId;
@@ -258,37 +310,32 @@ router.delete('/hallsdel/:hallId/designs/:designId', async (req, res) => {
   }
 });
 
-//get all halls  
-
-router.get('/halls', async (req, res) => {
+router.get('/halls/:hallId/bookings', async (req, res) => {
   try {
-    const halls = await Halls.find({});
-    res.status(200).json(halls);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-//get design 
-router.get('/halls/:hallId/designs', async (req, res) => {
-  try {
-    const hallId = req.params.hallId;
+    const { hallId } = req.params;
 
-    // Assuming you have a model called 'Hall' representing your halls collection
-    const hall = await Halls.findById(hallId);
-
+    const hall = await Halls.findById(hallId).populate('designs').exec();
     if (!hall) {
-      return res.status(404).json({ error: 'Hall not found' });
+      return res.status(404).json({ message: 'Hall not found' });
     }
 
-    const designs = hall.designs;
+    const bookings = hall.booking.map((booking) => {
+      return {
+        _id: booking._id,
+        user: booking.user,
+        bookDate: booking.bookDate,
+        bookStartTime: booking.bookStartTime,
+        bookEndTime: booking.bookEndTime,
+        payment: booking.payment,
+        design: booking.design
+      };
+    });
 
-    res.status(200).json({ designs });
+    res.json(bookings);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
-
 
   module.exports = router;
