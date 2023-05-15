@@ -78,8 +78,7 @@ router.delete("/halls/:id", async (req, res) => {
 router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
   try {
     const { hallId, designId } = req.params;
-    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } =
-      req.body;
+    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } = req.body;
 
     const hall = await Halls.findById(hallId);
     if (!hall) {
@@ -88,36 +87,26 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
 
     // Check if the hall is available for the given date and time
     const overlappingBooking = hall.booking.some((booking) => {
-      // const start = new Date(booking.bookStartTime);
       const start = moment(booking.bookStartTime);
-      // const end = new Date(booking.bookEndTime);
       const end = moment(booking.bookEndTime);
       const requestedStart = moment(bookStartTime, "HH:mm");
-      // const requestedEnd = new Date(bookEndTime, "HH:mm");
       const requestedEnd = moment(bookEndTime, "HH:mm");
+      const isSameDate = moment(bookDate).isSame(moment(booking.bookDate), "day");
+
       return (
-        requestedStart.isBetween(start, end, undefined, "[)") ||
-        requestedEnd.isBetween(start, end, undefined, "(]") ||
-        (requestedStart.isSameOrBefore(start) &&
-          requestedEnd.isSameOrAfter(end))
+        isSameDate &&
+        ((requestedStart.isBetween(start, end, undefined, "[)") ||
+          requestedEnd.isBetween(start, end, undefined, "(]")) ||
+          (requestedStart.isSameOrBefore(start) && requestedEnd.isSameOrAfter(end)))
       );
-      // return (
-      //   (requestedStart >= start && requestedStart < end) ||
-      //   (requestedEnd > start && requestedEnd <= end) ||
-      //   (requestedStart <= start && requestedEnd >= end)
-      // );
     });
 
     if (overlappingBooking) {
-      return res
-        .status(400)
-        .json({ message: "Hall is not available for the given date and time" });
+      return res.status(400).json({ message: "Hall is not available for the given date and time" });
     }
 
     // Find the selected design by ID
-    const selectedDesign = hall.designs.find(
-      (design) => design._id.toString() === designId
-    );
+    const selectedDesign = hall.designs.find((design) => design._id.toString() === designId);
     if (!selectedDesign) {
       return res.status(404).json({ message: "Design not found" });
     }
@@ -132,8 +121,9 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
         paymentDate: new Date(),
         paymentAmount: paymentAmount,
       },
+      designId: designId, // Include the designId in the booking
       design: {
-        _id: selectedDesign._id,
+        _id: selectedDesign._id.toString(),
         name: selectedDesign.name,
         imageUrl: selectedDesign.imageUrl,
         price: selectedDesign.price,
@@ -145,29 +135,6 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
     await hall.save();
 
     res.json(newBooking);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-// delete all booking for an hall
-
-router.delete("/halls/:hallId/bookings", async (req, res) => {
-  try {
-    const { hallId } = req.params;
-
-    // Find the hall by ID
-    const hall = await Halls.findById(hallId);
-    if (!hall) {
-      return res.status(404).json({ message: "Hall not found" });
-    }
-
-    // Delete all bookings for the hall
-    hall.booking = [];
-
-    await hall.save();
-
-    res.json({ message: "All bookings for the hall have been deleted" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -397,5 +364,31 @@ router.get("/halls/:hallId/bookings", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+router.delete("/halls/:hallId/bookings/:bookingId", async (req, res) => {
+  try {
+    const { hallId, bookingId } = req.params;
 
+    // Find the hall by ID
+    const hall = await Halls.findById(hallId);
+    if (!hall) {
+      return res.status(404).json({ message: "Hall not found" });
+    }
+
+    // Find the index of the booking in the hall's booking array
+    const bookingIndex = hall.booking.findIndex((booking) => booking._id && booking._id.toString() === bookingId);
+    if (bookingIndex === -1) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Remove the booking from the booking array
+    hall.booking.splice(bookingIndex, 1);
+
+    await hall.save();
+
+    res.json({ message: "Booking deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 module.exports = router;
