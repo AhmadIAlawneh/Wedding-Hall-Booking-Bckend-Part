@@ -1,5 +1,6 @@
 const express = require("express");
 const Halls = require("../Schemas/Halls");
+const User= require('../Schemas/User')
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
@@ -386,6 +387,26 @@ router.delete("/halls/:hallId/bookings/:bookingId", async (req, res) => {
     await hall.save();
 
     res.json({ message: "Booking deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/bookings/user/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Retrieve bookings associated with the user
+    const bookings = await Halls.find({ 'booking.user': user._id }, { booking: { $elemMatch: { user: user._id } }, designs: 0 });
+
+    res.json({ bookings });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
