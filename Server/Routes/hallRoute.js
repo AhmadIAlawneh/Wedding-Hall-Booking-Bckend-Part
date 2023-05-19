@@ -5,6 +5,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+
 const upload = multer({ dest: "uploads/" });
 const { promisify } = require("util");
 const { object, string, number } = require("joi");
@@ -145,8 +146,7 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
 router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
   try {
     const { hallId, bookingId } = req.params;
-    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } =
-      req.body;
+    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount } = req.body;
 
     const hall = await Halls.findById(hallId);
     if (!hall) {
@@ -154,9 +154,7 @@ router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
     }
 
     // Find the booking to be modified
-    const bookingIndex = hall.booking.findIndex(
-      (booking) => booking._id.toString() === bookingId
-    );
+    const bookingIndex = hall.booking.findIndex((booking) => booking._id.toString() === bookingId);
     if (bookingIndex === -1) {
       return res.status(404).json({ message: "Booking not found" });
     }
@@ -164,9 +162,7 @@ router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
     // Verify that the requesting user is the one who made the booking
     const booking = hall.booking[bookingIndex];
     if (booking.user.toString() !== userId) {
-      return res
-        .status(403)
-        .json({ message: "You are not authorized to modify this booking" });
+      return res.status(403).json({ message: "You are not authorized to modify this booking" });
     }
 
     // Check if the hall is available for the modified booking date and time
@@ -175,16 +171,18 @@ router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
         return false; // Skip the booking being modified
       }
 
-      const start = new Date(booking.bookStartTime);
-      const end = new Date(booking.bookEndTime);
-      const requestedStart = new Date(bookStartTime);
-      const requestedEnd = new Date(bookEndTime);
+      const start = moment(booking.bookStartTime);
+      const end = moment(booking.bookEndTime);
+      const requestedStart = moment(bookStartTime);
+      const requestedEnd = moment(bookEndTime);
 
-      return (
-        (requestedStart >= start && requestedStart < end) ||
-        (requestedEnd > start && requestedEnd <= end) ||
-        (requestedStart <= start && requestedEnd >= end)
-      );
+      const isSameDay = moment(requestedStart).isSame(start, 'day');
+      const isOverlapping =
+        (requestedStart.isSameOrAfter(start) && requestedStart.isBefore(end)) ||
+        (requestedEnd.isAfter(start) && requestedEnd.isSameOrBefore(end)) ||
+        (requestedStart.isSameOrBefore(start) && requestedEnd.isSameOrAfter(end));
+
+      return isSameDay && isOverlapping;
     });
 
     if (overlappingBooking) {
