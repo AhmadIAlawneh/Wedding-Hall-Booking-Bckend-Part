@@ -1,5 +1,5 @@
 
-const { object, array } = require('joi');
+const { object, array, boolean } = require('joi');
 const mongoose =require('mongoose');
 const hallSchema= mongoose.Schema({
   
@@ -37,16 +37,21 @@ const hallSchema= mongoose.Schema({
       },
       description: {
         type: String,
-   
+        default:false,
       },
     },
   ],
   booking: [
     {
+      extraDecorations: {
+        type: Boolean,
+        
+      },
       user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
       },
+      
       bookDate: {
         type: Date,
       },
@@ -67,6 +72,7 @@ const hallSchema= mongoose.Schema({
         },
       },
       design: {
+      
         name: {
           type: String,
           
