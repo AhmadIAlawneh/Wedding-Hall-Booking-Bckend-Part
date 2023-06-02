@@ -29,6 +29,8 @@ const hallSchema= mongoose.Schema({
       },
       imageUrl: {
         type: String,
+        default: '',
+        required: false,
         
       },
       price: {
@@ -79,6 +81,8 @@ const hallSchema= mongoose.Schema({
         },
         imageUrl: {
           type: String,
+          default: '',
+          required: false,
         
         },
         price: {

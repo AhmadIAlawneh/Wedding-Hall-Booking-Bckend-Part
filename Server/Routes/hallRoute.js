@@ -5,7 +5,6 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const moment = require("moment-timezone");
 const upload = multer({ dest: "uploads/" });
 const { promisify } = require("util");
 const { object, string, number } = require("joi");
@@ -80,7 +79,7 @@ router.delete("/halls/:id", async (req, res) => {
 router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
   try {
     const { hallId, designId } = req.params;
-    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount, extraDecorations } = req.body;
+    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount, extraDecoration } = req.body;
 
     const hall = await Halls.findById(hallId);
     if (!hall) {
@@ -107,43 +106,33 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
       return res.status(400).json({ message: "Hall is not available for the given date and time" });
     }
 
-    // Calculate the duration of the booking
-    const duration = moment.duration(moment(bookEndTime, "HH:mm").diff(moment(bookStartTime, "HH:mm"))).asMinutes();
-    if (duration < 30) {
-      return res.status(400).json({ message: "Booking duration must be at least 30 minutes" });
-    }
-
     // Find the selected design by ID
     const selectedDesign = hall.designs.find((design) => design._id.toString() === designId);
     if (!selectedDesign) {
       return res.status(404).json({ message: "Design not found" });
     }
 
-    // Calculate the total payment amount including extra decorations
-    let totalPaymentAmount = paymentAmount;
-    if (extraDecorations) {
-      totalPaymentAmount += 50; // Add 50 to the payment amount for extra decorations
+    // Calculate the duration of the booking
+    const duration = moment.duration(moment(bookEndTime, "HH:mm").diff(moment(bookStartTime, "HH:mm"))).asMinutes();
+    if (duration < 30) {
+      return res.status(400).json({ message: "Booking duration must be at least 30 minutes" });
     }
 
-    // Extract hours and minutes from the input time values
-    const [startHours, startMinutes] = bookStartTime.split(":");
-    const [endHours, endMinutes] = bookEndTime.split(":");
-
-    // Create new Date objects with the correct time
-    const startTime = new Date(bookDate);
-    startTime.setHours(startHours, startMinutes);
-    const endTime = new Date(bookDate);
-    endTime.setHours(endHours, endMinutes);
+    // Calculate the payment amount
+    let totalPayment = paymentAmount;
+    if (extraDecoration) {
+      totalPayment += 50;
+    }
 
     // Book the hall with the selected design
     const newBooking = {
       user: userId,
       bookDate: bookDate,
-      bookStartTime: startTime,
-      bookEndTime: endTime,
+      bookStartTime: moment(bookStartTime, "HH:mm"),
+      bookEndTime: moment(bookEndTime, "HH:mm"),
       payment: {
         paymentDate: new Date(),
-        paymentAmount: totalPaymentAmount, // Update the payment amount to include extra decorations
+        paymentAmount: totalPayment,
       },
       designId: designId, // Include the designId in the booking
       design: {
@@ -165,11 +154,12 @@ router.post("/halls/:hallId/bookings/:designId", async (req, res) => {
   }
 });
 
+const moment = require("moment");
 
 router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
   try {
     const { hallId, bookingId } = req.params;
-    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount, extraDecorations } = req.body;
+    const { userId, bookDate, bookStartTime, bookEndTime, paymentAmount, extraDecoration } = req.body;
 
     const hall = await Halls.findById(hallId);
     if (!hall) {
@@ -188,53 +178,49 @@ router.put("/halls/:hallId/bookings/:bookingId", async (req, res) => {
       return res.status(403).json({ message: "You are not authorized to modify this booking" });
     }
 
-    // Check if the booking time is being modified
-    if (booking.bookStartTime !== bookStartTime || booking.bookEndTime !== bookEndTime) {
-      // Validate the minimum duration of 30 minutes
+    // Check if the hall is available for the modified booking date and time
+    const overlappingBooking = hall.booking.find((booking, index) => {
+      if (index === bookingIndex) {
+        return false; // Skip the booking being modified
+      }
+
+      const start = moment(booking.bookStartTime);
+      const end = moment(booking.bookEndTime);
       const requestedStart = moment(bookStartTime, "HH:mm");
       const requestedEnd = moment(bookEndTime, "HH:mm");
-      const durationMinutes = requestedEnd.diff(requestedStart, "minutes");
+      const isSameDate = moment(bookDate).isSame(moment(booking.bookDate), "day");
 
-      if (durationMinutes < 30) {
-        return res.status(400).json({ message: "Booking duration must be at least 30 minutes" });
-      }
+      return (
+        isSameDate &&
+        ((requestedStart.isBetween(start, end, undefined, "[)") ||
+          requestedEnd.isBetween(start, end, undefined, "(]")) ||
+          (requestedStart.isSameOrBefore(start) && requestedEnd.isSameOrAfter(end)))
+      );
+    });
 
-      // Check if the hall is available for the modified booking date and time
-      const overlappingBooking = hall.booking.find((booking, index) => {
-        if (index === bookingIndex) {
-          return false; // Skip the booking being modified
-        }
-
-        const start = moment(booking.bookStartTime);
-        const end = moment(booking.bookEndTime);
-
-        const isSameDay = moment(bookDate).isSame(moment(booking.bookDate), "day");
-        const isOverlapping =
-          (requestedStart.isSameOrAfter(start) && requestedStart.isBefore(end)) ||
-          (requestedEnd.isAfter(start) && requestedEnd.isSameOrBefore(end)) ||
-          (requestedStart.isSameOrBefore(start) && requestedEnd.isSameOrAfter(end));
-
-        // Consider extra decorations for overlapping bookings
-        if (isSameDay && isOverlapping && booking.extraDecorations) {
-          return true;
-        }
-
-        return isSameDay && isOverlapping;
+    if (overlappingBooking) {
+      return res.status(400).json({
+        message: "Hall is not available for the modified booking date and time",
       });
+    }
 
-      if (overlappingBooking) {
-        return res.status(400).json({
-          message: "Hall is not available for the modified booking date and time",
-        });
-      }
+    // Calculate the duration of the modified booking
+    const duration = moment.duration(moment(bookEndTime, "HH:mm").diff(moment(bookStartTime, "HH:mm"))).asMinutes();
+    if (duration < 30) {
+      return res.status(400).json({ message: "Booking duration must be at least 30 minutes" });
+    }
+
+    // Calculate the payment amount
+    let totalPayment = paymentAmount;
+    if (extraDecoration) {
+      totalPayment += 50;
     }
 
     // Update the booking with the modified information
     booking.bookDate = bookDate;
-    booking.bookStartTime = bookStartTime;
-    booking.bookEndTime = bookEndTime;
-    booking.payment.paymentAmount = extraDecorations ? paymentAmount + 50 : paymentAmount;
-    booking.extraDecorations = extraDecorations;
+    booking.bookStartTime = moment(bookStartTime, "HH:mm");
+    booking.bookEndTime = moment(bookEndTime, "HH:mm");
+    booking.payment.paymentAmount = totalPayment;
 
     await hall.save();
 
